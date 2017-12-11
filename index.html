@@ -1,0 +1,405 @@
+
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>Server side rendering and state transitions</title>
+
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Indie+Flower" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/aio.css">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="css/dracula.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+	</head>
+	<body>
+    <!-- <a style="font-family: 'Roboto', sans-serif;text-decoration: none; font-size: 1.2em;position: absolute; top: 1em; left: 7.5em; z-index: 2; color: #eee;" href="http://twitter.com/PascalPrecht"> -->
+    <!--   <span>@PascalPrecht</span> -->
+    <!-- </a> -->
+
+    <!-- <a style="font-family: 'Roboto', sans-serif; color: #eee;text-decoration: none; font-size: 1.2em;position: absolute; top: 1em; left: 1em; z-index: 2;" href="http://enterjs.de"> -->
+    <!--   <span>#AngularUp</span> -->
+    <!-- </a> -->
+		<div class="reveal">
+			<div class="slides">
+				<section data-state="start" class="deck-slide" data-background="img/angular.svg" data-transition="fade">
+          <h1>Server side rendering and state transitions</h1>
+          <div class="speaker">
+            <div class="speaker-info">
+              <span>Alex Routledge</span>
+              <a href="http://twitter.com/alexroutledge">@alexroutledge</a>
+            </div>
+          </div>
+        </section>
+
+        <section>
+            <div class="box">
+              <h2>Server side rendering and state transitions</h2>
+              <ul>
+                <li class="fragment">What is it and why do we need it?</li>
+                <li class="fragment">Implementation</li>
+                <li class="fragment">Performance benchmarking</li>
+                <li class="fragment">Supercharging performance</li>
+                <li class="fragment">Why Angular?</li>
+              </ul>
+            </div>
+        </section>
+
+        <section data-transition="none">
+            <div class="box">
+              <h2>What is it and why do we need it?</h2>
+              <ul>
+                <li class="fragment">JS blocks progressive rendering</li>
+                <li class="fragment">Javascript based rendering</li>
+                <li class="fragment">Server based rendering + hydrate</li>
+                <li class="fragment">Progressive rendering + bootstrap</li>
+                <li class="fragment">Improve perceived performance</li>
+              </ul>
+            </div>
+        </section>
+
+        <section data-transition="none">
+          <div class="box">
+            <img src="img/performance_1.jpg" style="max-width: 90%; margin: 0 auto;display: block;">
+          </div>
+        </section>
+
+        <section data-transition="none">
+            <div class="box">
+              <h2>Implementation</h2>
+              <ul>
+                <li class="fragment">Changes at client and server level</li>
+                <li class="fragment">Remove duplication between client and server</li>
+              </ul>
+            </div>
+        </section>
+
+        <section data-transition="none">
+            <div class="box">
+              <img src="img/implementation.png" style="max-width: 90%; margin: 0 auto;display: block;">
+            </div>
+          </section>
+
+        <section>
+            <div class="box">
+              <h2>Implementation</h2>
+              <pre class="fragment">
+                <code data-trim data-noescape class="typescript">
+                import { BrowserModule } from '@angular/platform-browser';
+                <fragment class="fragment">
+                @NgModule({
+                  imports: [
+                    BrowserModule.withServerTransition({appId: 'some-app-id'})
+                  ]
+                })
+                </fragment>
+               </code>
+              </pre>
+              <p class="ribbon fragment"><i class="material-icons">info_outline</i> 
+                You need to call the <code>withServerTransition()</code> method to  
+                make sure the browser-based application will transition from a server-rendered application</p>
+            </div>
+          </section>
+        
+          <section>
+              <div class="box">
+                <h2>Implementation</h2>
+                <pre class="fragment">
+                  <code data-trim data-noescape class="typescript">
+                  import { ServerModule } from '@angular/platform-server';
+                  import { AppComponent, AppBrowserModule } from './browser.module';
+                  <fragment class="fragment">
+                  @NgModule({
+                    imports: [
+                      ServerModule,
+                      AppBrowserModule
+                    ]
+                  })
+                  </fragment>
+                 </code>
+                </pre>
+                <p class="ribbon fragment"><i class="material-icons">info_outline</i> 
+                  You should import both ServerModule and AppBrowserModule to ensure they both share the same appId</p>
+              </div>
+            </section>
+        
+            <section>
+                <div class="box">
+                  <h2>Implementation</h2>
+                  <pre class="fragment">
+                    <code data-trim data-noescape class="typescript">
+                    import {platformServer, renderModuleFactory} from '@angular/platform-server';
+                    import {AppServerModuleNgFactory} from './ngfactory/src/app.server.ngfactory';
+                    import {ngExpressEngine} from './express-engine';
+                    <fragment class="fragment">
+                    app.engine('html', ngExpressEngine({
+                      baseUrl: 'http://localhost:4200',
+                      bootstrap: [AppServerModuleNgFactory]
+                    }));
+                    </fragment>
+                   </code>
+                  </pre>
+                  <p class="ribbon fragment"><i class="material-icons">info_outline</i> 
+                    In this example, ngExpressEngine is used as the Angular Universal rendering engine for Express</p>
+                </div>
+              </section>
+        
+              <section>
+                  <div class="box">
+                    <h2>Implementation</h2>
+                    <pre class="fragment">
+                      <code data-trim data-noescape class="typescript">
+                      import {renderModuleFactory} from '@angular/platform-server';
+                      <fragment class="fragment">
+                      async function(req: Express.request, res: Express.response) {
+                        const data = await renderModuleFactory(setupOptions.bootstrap[0], {
+                          document: fs.readFileSync(filePath).toString(),
+                          url: options.req.url
+                        });
+                        res.json(data);
+                      }
+                      </fragment>
+                     </code>
+                    </pre>
+                    <p class="ribbon fragment"><i class="material-icons">info_outline</i> 
+                      In this example, we bootstrap the Angular application into a virtual DOM tree parsed from the document, and serialise the resulting DOM state to a string, which you pass to the Express engine API.</p>
+                  </div>
+                </section>
+
+        <section data-transition="none">
+            <div class="box">
+              <h2>Performance benchmarking</h2>
+              <ul>
+                <li class="fragment">Use RUM tools to benchmark performance</li>
+                <li class="fragment">Large reduction (10-25%) in time to first paint</li>
+                <li class="fragment">Can we supercharge performance?</li>
+              </ul>
+            </div>
+        </section>
+
+        <section data-transition="none">
+          <div class="box">
+            <img src="img/performance_2.png" style="max-width: 90%; margin: 0 auto;display: block;">
+          </div>
+        </section>
+
+        <section data-transition="none">
+          <div class="box">
+            <img src="img/performance_3.png" style="max-width: 90%; margin: 0 auto;display: block;">
+          </div>
+        </section>
+
+        <section data-transition="none">
+          <div class="box">
+            <h2>Can we supercharge performance?</h2>
+            <ul>
+              <li class="fragment">Use nodejs streams</li>
+              <li class="fragment">Use immutable data structures</li>
+              <li class="fragment">Run rendering logic in web worker</li>
+              <li class="fragment">Use service worker to cache static assets</li
+            </ul>
+          </div>
+      </section>
+
+      <section data-transition="none">
+        <div class="box">
+          <h2>Nodejs streams</h2>
+          <ul>
+            <li class="fragment">Render initial view in buffered chunks</li>
+            <li class="fragment">Improve TTFB</li>
+            <li class="fragment">Prevent script tags from blocking initial render</li>
+            <li class="fragment">Allow preloader to speculatively load assets</li>
+          </ul>
+        </div>
+    </section>
+
+      <section data-transition="none">
+        <div class="box">
+          <img src="img/streams.png" style="max-width: 90%; margin: 0 auto;display: block;">
+        </div>
+      </section>
+
+      <section data-transition="none">
+        <div class="box">
+          <h2>Use immutable data structures</h2>
+          <ul>
+            <li class="fragment">With OnPush, change detection will be triggered when the framework, with reference check, determines that any of the inputs of a component have changed.</li>
+          </ul>
+        </div>
+    </section>
+
+      <section data-transition="none">
+            <div class="box">
+              <h2>Web worker rendering</h2>
+              <ul>
+                <li class="fragment">Allows unblocking of UI and improves frame rates</li>
+                <li class="fragment">Web worker code can run with or without Web workers</li>
+                <li class="fragment">No DOM access</li>
+                <li class="fragment">DOM manipulation handled by Renderer service and data bindings</li
+              </ul>
+            </div>
+        </section>
+
+        <section data-transition="none">
+          <div class="box">
+            <img src="img/web-worker.png" style="max-width: 90%; margin: 0 auto;display: block;">
+          </div>
+        </section>
+
+        <section>
+            <div class="box">
+              <h2>Web worker rendering</h2>
+              <pre class="fragment">
+              <code data-trim data-noescape class="typescript">
+              import { bootstrapWorkerUi } from '@angular/platform-webworker';
+              <fragment class="fragment">
+              bootstrapWorkerUi('webworker.bundle.js');
+              </fragment>
+              </code>
+            </pre>
+              <p class="ribbon fragment"><i class="material-icons">info_outline</i> 
+                Update app to reference the new web worker file</p>
+            </div>
+          </section>
+        
+          <section>
+              <div class="box">
+                <h2>Web worker rendering</h2>
+                <pre class="fragment">
+                <code data-trim data-noescape class="typescript">
+                import { platformWorkerAppDynamic } from '@angular/platform-webworker-dynamic';
+                <fragment class="fragment">
+                platformWorkerAppDynamic().bootstrapModule(AppModule);
+                </fragment>
+                </code>
+              </pre>
+                <p class="ribbon fragment"><i class="material-icons">info_outline</i> 
+                  This will enable Angular to run business logic and change detection within an isolated thread.</p>
+              </div>
+            </section>
+
+        <section data-transition="none">
+            <div class="box">
+              <h2>Service worker rendering</h2>
+              <ul>
+                <li class="fragment">Offline caching, instantaneous loading</li>
+                <li class="fragment">Controls how network requests are handled</li>
+                <li class="fragment">Provide static, dynamic and external resources from cache</li>
+                <li class="fragment">Only use network when necessary</li
+              </ul>
+            </div>
+        </section>
+
+        <section data-transition="none">
+          <div class="box">
+            <img src="img/service-worker.png" style="max-width: 90%; margin: 0 auto;display: block;">
+          </div>
+        </section>
+
+        <section>
+            <div class="box">
+              <h2>Service worker rendering</h2>
+              <pre class="fragment">
+                <code data-trim data-noescape class="typescript">
+                npm install @angular/service-worker
+               </code>
+              </pre>
+              <p class="ribbon fragment"><i class="material-icons">info_outline</i> 
+                Angular CLI takes care of adding the worker to our app</p>
+            </div>
+          </section>
+        
+          <section>
+              <div class="box">
+                <h2>Service worker rendering</h2>
+                <pre class="fragment">
+                <code data-trim data-noescape class="typescript">
+                // ngsw-manifest.json
+                {
+                ...
+                "routing": {
+                  <fragment class="fragment">"index": "/index.html",</fragment>
+                  <fragment class="fragment">"routes": {
+                    "/": {
+                      "prefix": "false" // match exactly
+                    }
+                  }</fragment>
+                }
+              }
+              </code>
+              </pre>
+                <p class="ribbon fragment"><i class="material-icons">info_outline</i> 
+                  Angular CLI takes care of adding the worker to our app</p>
+              </div>
+            </section>
+
+        <section data-transition="none">
+          <div class="box">
+            <h2>Why Angular?</h2>
+            <ul>
+              <li class="fragment">If we are going to compare Angular to React, we need to add: 
+                Redux-Promise, Redux-Thunk, React-Redux-Router, Redux-Form, React-Redux, ImmutableJS, React-Router and 
+                React-Dom</li>
+            </ul>
+          </div>
+        </section>
+
+        <section data-transition="none">
+          <div class="box">
+            <h2>Why Angular?</h2>
+            <ul>
+              <li class="fragment">First class support for server side rendering</li>
+              <li class="fragment">Rendering logic can be run within a webworker</li>
+              <li class="fragment">In built support for service workers</li>
+              <li class="fragment">Protractor can be used to catch performance regressions</li>
+            </ul>
+          </div>
+        </section>
+
+        <section data-state="end" class="thank-you-slide" data-background="img/angular.svg" data-autoslide="1000">
+          <div class="fragment">
+            <h1>Thank you.</h1>
+            <div class="speaker">
+              <div class="speaker-info">
+                <span>Alex Routledge</span>
+                <a href="http://twitter.com/alexroutledge">@alexroutledge</a>
+              </div>
+            </div>
+          </div>
+        </section>
+			</div>
+		</div>
+
+		<script src="js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+			// More info about config & dependencies:
+			// - https://github.com/hakimel/reveal.js#configuration
+			// - https://github.com/hakimel/reveal.js#dependencies
+			Reveal.initialize({
+        transition: 'fade', // none/fade/slide/convex/concave/zoom
+        history: true,
+				dependencies: [
+					{ src: 'js/marked.js' },
+					{ src: 'js/markdown.js' },
+					{ src: 'js/notes.js', async: true },
+					{ src: 'js/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+				]
+			});
+		</script>
+	</body>
+</html>

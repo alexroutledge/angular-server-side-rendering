@@ -26,17 +26,11 @@
 		</script>
 	</head>
 	<body>
-    <!-- <a style="font-family: 'Roboto', sans-serif;text-decoration: none; font-size: 1.2em;position: absolute; top: 1em; left: 7.5em; z-index: 2; color: #eee;" href="http://twitter.com/PascalPrecht"> -->
-    <!--   <span>@PascalPrecht</span> -->
-    <!-- </a> -->
 
-    <!-- <a style="font-family: 'Roboto', sans-serif; color: #eee;text-decoration: none; font-size: 1.2em;position: absolute; top: 1em; left: 1em; z-index: 2;" href="http://enterjs.de"> -->
-    <!--   <span>#AngularUp</span> -->
-    <!-- </a> -->
 		<div class="reveal">
 			<div class="slides">
 				<section data-state="start" class="deck-slide" data-background="img/angular.svg" data-transition="fade">
-          <h1>Server side rendering and state transitions</h1>
+          <h1>Angular 5 - Server side rendering and state transitions</h1>
           <div class="speaker">
             <div class="speaker-info">
               <span>Alex Routledge</span>
@@ -63,10 +57,9 @@
               <h2>What is it and why do we need it?</h2>
               <ul>
                 <li class="fragment">JS blocks progressive rendering</li>
-                <li class="fragment">Javascript based rendering</li>
-                <li class="fragment">Server based rendering + hydrate</li>
-                <li class="fragment">Progressive rendering + bootstrap</li>
+                <li class="fragment">Javascript vs hybrid vs server rendering</li>
                 <li class="fragment">Improve perceived performance</li>
+                <li class="fragment">Initial view should render without JS at 60fps</li>
               </ul>
             </div>
         </section>
@@ -82,14 +75,14 @@
               <h2>Implementation</h2>
               <ul>
                 <li class="fragment">Changes at client and server level</li>
-                <li class="fragment">Remove duplication between client and server</li>
+                <li class="fragment">Share application state between client and server</li>
               </ul>
             </div>
         </section>
 
         <section data-transition="none">
             <div class="box">
-              <img src="img/implementation.png" style="max-width: 90%; margin: 0 auto;display: block;">
+              <img src="img/implementation.png" style="max-width: 85%; margin: 0 auto;display: block;">
             </div>
           </section>
 
@@ -98,17 +91,16 @@
               <h2>Implementation</h2>
               <pre class="fragment">
                 <code data-trim data-noescape class="typescript">
-                import { BrowserModule } from '@angular/platform-browser';
-                <fragment class="fragment">
+                //app.browser.module.ts
                 @NgModule({
                   imports: [
-                    BrowserModule.withServerTransition({appId: 'some-app-id'})
+                    BrowserModule.withServerTransition({appId: 'some-app-id'}),
+                    BrowserTransferStateModule
                   ]
                 })
-                </fragment>
                </code>
               </pre>
-              <p class="ribbon fragment"><i class="material-icons">info_outline</i> 
+              <p class="ribbon fragment"><i class="material-icons"></i> 
                 You need to call the <code>withServerTransition()</code> method to  
                 make sure the browser-based application will transition from a server-rendered application</p>
             </div>
@@ -119,19 +111,17 @@
                 <h2>Implementation</h2>
                 <pre class="fragment">
                   <code data-trim data-noescape class="typescript">
-                  import { ServerModule } from '@angular/platform-server';
-                  import { AppComponent, AppBrowserModule } from './browser.module';
-                  <fragment class="fragment">
+                  //app.node.module.ts
                   @NgModule({
                     imports: [
                       ServerModule,
-                      AppBrowserModule
+                      AppBrowserModule,
+                      ServerTransferStateModule
                     ]
                   })
-                  </fragment>
                  </code>
                 </pre>
-                <p class="ribbon fragment"><i class="material-icons">info_outline</i> 
+                <p class="ribbon fragment"><i class="material-icons"></i> 
                   You should import both ServerModule and AppBrowserModule to ensure they both share the same appId</p>
               </div>
             </section>
@@ -141,8 +131,7 @@
                   <h2>Implementation</h2>
                   <pre class="fragment">
                     <code data-trim data-noescape class="typescript">
-                    import {platformServer, renderModuleFactory} from '@angular/platform-server';
-                    import {AppServerModuleNgFactory} from './ngfactory/src/app.server.ngfactory';
+                    import {AppServerModuleNgFactory} from './app.server.ngfactory';
                     import {ngExpressEngine} from './express-engine';
                     <fragment class="fragment">
                     app.engine('html', ngExpressEngine({
@@ -152,7 +141,7 @@
                     </fragment>
                    </code>
                   </pre>
-                  <p class="ribbon fragment"><i class="material-icons">info_outline</i> 
+                  <p class="ribbon fragment"><i class="material-icons"></i> 
                     In this example, ngExpressEngine is used as the Angular Universal rendering engine for Express</p>
                 </div>
               </section>
@@ -162,8 +151,6 @@
                     <h2>Implementation</h2>
                     <pre class="fragment">
                       <code data-trim data-noescape class="typescript">
-                      import {renderModuleFactory} from '@angular/platform-server';
-                      <fragment class="fragment">
                       async function(req: Express.request, res: Express.response) {
                         const data = await renderModuleFactory(setupOptions.bootstrap[0], {
                           document: fs.readFileSync(filePath).toString(),
@@ -171,13 +158,32 @@
                         });
                         res.json(data);
                       }
-                      </fragment>
                      </code>
                     </pre>
-                    <p class="ribbon fragment"><i class="material-icons">info_outline</i> 
-                      In this example, we bootstrap the Angular application into a virtual DOM tree parsed from the document, and serialise the resulting DOM state to a string, which you pass to the Express engine API.</p>
+                    <p class="ribbon fragment"><i class="material-icons"></i> 
+                      In this example, we bootstrap the application DOM state to a string, which is then passed to the Express engine API.</p>
                   </div>
                 </section>
+
+                <section>
+                    <div class="box">
+                      <h2>Implementation</h2>
+                      <pre class="fragment">
+                        <code data-trim data-noescape class="typescript">
+                        //server
+                        this.transferState.onSerialize(RESULT_KEY, (data: Response) => data);
+                        return this.http.get<Response>('/api/v1/endpoint');
+                        //client
+                        const key = this.transferState.hasKey(RESULT_KEY);
+                        const res = Observable.of(this.transferState.get<Response>(RESULT_KEY, null));
+                        this.transferState.remove(RESULT_KEY);
+                        return res;
+                        </code>
+                      </pre>
+                      <p class="ribbon fragment"><i class="material-icons"></i> 
+                        Ensure HTTP requests are not duplicated on the client and server.</p>
+                    </div>
+                  </section>
 
         <section data-transition="none">
             <div class="box">
@@ -185,7 +191,6 @@
               <ul>
                 <li class="fragment">Use RUM tools to benchmark performance</li>
                 <li class="fragment">Large reduction (10-25%) in time to first paint</li>
-                <li class="fragment">Can we supercharge performance?</li>
               </ul>
             </div>
         </section>
@@ -196,24 +201,45 @@
           </div>
         </section>
 
+        <!--
         <section data-transition="none">
           <div class="box">
             <img src="img/performance_3.png" style="max-width: 90%; margin: 0 auto;display: block;">
+          </div>
+        </section>
+        -->
+
+        <section data-transition="none">
+          <div class="box">
+            <video controls src="video/video.mp4"/>
           </div>
         </section>
 
         <section data-transition="none">
           <div class="box">
             <h2>Can we supercharge performance?</h2>
-            <ul>
-              <li class="fragment">Use nodejs streams</li>
-              <li class="fragment">Use immutable data structures</li>
-              <li class="fragment">Run rendering logic in web worker</li>
-              <li class="fragment">Use service worker to cache static assets</li
-            </ul>
           </div>
       </section>
 
+      <section data-transition="none">
+        <div class="box">
+          <img src="img/performance_4.png" style="max-width: 90%; margin: 0 auto;display: block;">
+        </div>
+    </section>
+
+      <section data-transition="none">
+        <div class="box">
+          <h2>Can we supercharge performance?</h2>
+          <ul>
+            <!--<li class="fragment">Use nodejs streams</li>-->
+            <li class="fragment">Use immutable data structures</li>
+            <li class="fragment">Run rendering logic in web worker</li>
+            <li class="fragment">Use service worker to cache static assets</li
+          </ul>
+        </div>
+    </section>
+
+    <!--
       <section data-transition="none">
         <div class="box">
           <h2>Nodejs streams</h2>
@@ -231,6 +257,8 @@
           <img src="img/streams.png" style="max-width: 90%; margin: 0 auto;display: block;">
         </div>
       </section>
+    
+    -->
 
       <section data-transition="none">
         <div class="box">
@@ -270,7 +298,7 @@
               </fragment>
               </code>
             </pre>
-              <p class="ribbon fragment"><i class="material-icons">info_outline</i> 
+              <p class="ribbon fragment"><i class="material-icons"></i> 
                 Update app to reference the new web worker file</p>
             </div>
           </section>
@@ -286,7 +314,7 @@
                 </fragment>
                 </code>
               </pre>
-                <p class="ribbon fragment"><i class="material-icons">info_outline</i> 
+                <p class="ribbon fragment"><i class="material-icons"></i> 
                   This will enable Angular to run business logic and change detection within an isolated thread.</p>
               </div>
             </section>
@@ -317,7 +345,7 @@
                 npm install @angular/service-worker
                </code>
               </pre>
-              <p class="ribbon fragment"><i class="material-icons">info_outline</i> 
+              <p class="ribbon fragment"><i class="material-icons"></i> 
                 Angular CLI takes care of adding the worker to our app</p>
             </div>
           </section>
@@ -341,7 +369,7 @@
               }
               </code>
               </pre>
-                <p class="ribbon fragment"><i class="material-icons">info_outline</i> 
+                <p class="ribbon fragment"><i class="material-icons"></i> 
                   Angular CLI takes care of adding the worker to our app</p>
               </div>
             </section>
@@ -361,9 +389,9 @@
           <div class="box">
             <h2>Why Angular?</h2>
             <ul>
-              <li class="fragment">First class support for server side rendering</li>
+              <li class="fragment">Framework vs library (strictly defined architecture, less boilerplate code)</li>
+              <li class="fragment">First class support for server side rendering and service workers</li>
               <li class="fragment">Rendering logic can be run within a webworker</li>
-              <li class="fragment">In built support for service workers</li>
               <li class="fragment">Protractor can be used to catch performance regressions</li>
             </ul>
           </div>
